@@ -53,6 +53,7 @@
 		Write-Verbose -Message 'Trying to Load the required assemblies'
 		
 		Write-Verbose -Message "Loading assemblies from $binaryPath..."
+		
 		try
 		{
 			Write-Verbose -Message 'Trying to load the iTextSharp assembly'
@@ -76,7 +77,7 @@
 		
 		try
 		{
-            Write-Verbose -Message 'Trying to load the XMLWorker assembly'
+			Write-Verbose -Message 'Trying to load the XMLWorker assembly'
 			$xmlworkerloadstatus = $true
 			Add-Type -Path '.\bin\itextsharp.xmlworker.dll' -ErrorAction 'Stop'
 			
@@ -101,43 +102,119 @@
 	}
 	Process
 	{
+		try
+		{
+			
+			Write-Verbose -Message "Creating the Document object"
+			
+			$PDFDocument = New-Object iTextSharp.text.Document
+		}
+		Catch
+		{
+			
+			Write-Error -Message "Error creating the PDF Document in memory"
+			
+			break
+			
+		}
+		try
+		{
+			Write-Verbose -Message "Loading the reader"
+			
+			$reader = New-Object System.IO.StringReader($HTMLCode)
+		}
 		
-		Write-Verbose -Message "Creating the Document object"
+		catch
+		{
+			
+			Write-Error -Message "Couldn't create the Reader for the HTML String Input"
+			
+			break
+			
+		}
 		
-		$PDFDocument = New-Object iTextSharp.text.Document
-		
-		Write-Verbose -Message "Loading the reader"
-		
-		$reader = New-Object System.IO.StringReader($HTMLCode)
-		
-		Write-Verbose -Message "Defining the PDF Page Size"
-		
-		$PDFDocument.SetPageSize([iTextSharp.text.PageSize]::A4) | Out-Null
-		
-		Write-Verbose -Message "Creating the FileStream"
-		
-		$Stream = [IO.File]::OpenWrite($Destination)
-		
-		Write-Verbose -Message "Defining the Writer Object"
-		
-		$Writer = [itextsharp.text.pdf.PdfWriter]::GetInstance($PDFDocument, $Stream)
-		
-		Write-Verbose -Message "Defining the Initial Lead of the Document, BUGFix"
-		
-		$Writer.InitialLeading = '12.5'
-		
-		Write-Verbose -Message "Opening the document to input the HTML Code"
-		
-		$PDFDocument.Open()
-		
-		Write-Verbose -Message "Trying to parse the HTML into the opened document"
 		Try
 		{
+			Write-Verbose -Message "Defining the PDF Page Size"
+			
+			$PDFDocument.SetPageSize([iTextSharp.text.PageSize]::A4) | Out-Null
+		}
+		
+		catch
+		{
+			
+			Write-Warning -Message "Error Defining the PDF Document Size, will use default value from the class"
+			
+		}
+		
+		Try
+		{
+			Write-Verbose -Message "Creating the FileStream"
+			
+			$Stream = [IO.File]::OpenWrite($Destination)
+			
+		}
+		catch
+		{
+			Write-Error -Message "Error creating the file Stream"
+		}
+		
+		try
+		{
+			Write-Verbose -Message "Defining the Writer Object"
+			
+			$Writer = [itextsharp.text.pdf.PdfWriter]::GetInstance($PDFDocument, $Stream)
+		}
+		catch
+		{
+			
+			Write-Error -Message "Error creating the writer instance"
+			
+			break
+			
+		}
+		
+		try
+		{
+			
+			Write-Verbose -Message "Defining the Initial Lead of the Document, BUGFix"
+			
+			$Writer.InitialLeading = '12.5'
+			
+		}
+		catch
+		{
+			
+			Write-Warning -Message "Error defining the inicial Leading, and intermitent error might occur during the generation of the file"
+			
+		}
+		
+		try
+		{
+			Write-Verbose -Message "Opening the document to input the HTML Code"
+			
+			$PDFDocument.Open()
+		}
+		catch
+		{
+			
+			Write-Error -Message "Couldn't open the file for convertion"
+			
+		}
+		
+		Write-Verbose -Message "Trying to parse the HTML into the opened document"
+		
+		Try
+		{
+			
 			$htmlparsestatus = $true
 			
 			[iTextSharp.tool.xml.XMLWorkerHelper]::GetInstance().ParseXHtml($writer, $PDFDocument, $reader)
+			
 		}
-		Catch [System.Exception]
+		
+		
+		Catch
 		{
 			
 			$htmlparsestatus = $false
@@ -151,25 +228,22 @@
 	}
 	End
 	{
-        if ($htmlparsestatus)
-		        {
-
-			        Write-Verbose -Message "Sucessfully Created the PDF File"
-		
-		            Write-Verbose -Message "Closing the Document"
-		
-		            $PDFDocument.close()
-		
-		            Write-Verbose -Message "Disposing the file so it can me moved or deleted"
-		
-		            $PDFDocument.Dispose()
-		
-		            Write-Verbose -Message "Sucessfully finished the operation"
-
-		        }
+		if ($htmlparsestatus)
+		{
+			
+			Write-Verbose -Message "Sucessfully Created the PDF File"
+			
+			Write-Verbose -Message "Closing the Document"
+			
+			$PDFDocument.close()
+			
+			Write-Verbose -Message "Disposing the file so it can me moved or deleted"
+			
+			$PDFDocument.Dispose()
+			
+			Write-Verbose -Message "Sucessfully finished the operation"
+			
+		}
 		
 	}
 }
-
-[String]$HTMLCode = Get-Service | select name,Displayname,status,dep* | ConvertTo-Html -As Table
-ConvertFrom-HTMLtoPDF -Source $HTMLCode -Destination "$env:userprofile\Desktop\Test.pdf" -Verbose

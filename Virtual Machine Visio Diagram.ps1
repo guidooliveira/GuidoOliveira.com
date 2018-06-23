@@ -1,3 +1,8 @@
+Add-AzureRmAccount
+
+$Subscription = Get-AzureRmSubscription | Out-GridView -OutputMode Single
+Set-AzureRmContext -SubscriptionId $Subscription.Id
+function Get-VirtualMachineVisioDrawing {
 param(
   [Parameter(Mandatory=$True)]
   [String]$ResourceGroupName,
@@ -17,7 +22,7 @@ $VisioDocument = $Documents.Add('')
 $Pages = $VisioDiagram.ActiveDocument.Pages
 
 $Page = $Pages.Item(1)
-$Page.Name = 'Development'
+$Page.Name = $ResourceGroupName
 $Page.AutoSize = $true
 
 $Stencil = $VisioDiagram.Documents.Add('Basic Shapes.vss')
@@ -48,3 +53,6 @@ $Page.ResizeToFitContents()
 
 $VisioDocument.SaveAs((Resolve-Path $FilePath).Path)
 $VisioDiagram.Quit()
+}
+
+Get-VirtualMachineVisioDrawing -ResourceGroupName ‘nome do resource group’ -VisioPageName ‘Demo’ -filepath ‘.\desktop\demo.vsx’
